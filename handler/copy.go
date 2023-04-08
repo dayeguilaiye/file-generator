@@ -2,6 +2,7 @@ package handler
 
 import (
 	core2 "github.com/dayeguilaiye/file-generator/core"
+	"github.com/dayeguilaiye/file-generator/utils"
 	"github.com/pkg/errors"
 	"io"
 	"os"
@@ -92,7 +93,7 @@ func copyFile(src, dst string, bufferSize int) error {
 	if err != nil {
 		return err
 	}
-	defer in.Close()
+	defer utils.HandleClose(in)
 	out, err := os.Create(dst)
 	if err != nil {
 		return err

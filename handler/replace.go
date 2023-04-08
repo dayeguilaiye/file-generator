@@ -51,7 +51,7 @@ func (r *ReplaceHandler) GetHandlerFunc() core2.HandlerFunc {
 		}
 		dstContent := string(srcContent)
 		for k, v := range params.Replaces {
-			strings.ReplaceAll(dstContent, k, v)
+			dstContent = strings.ReplaceAll(dstContent, k, v)
 		}
 		err = ioutil.WriteFile(target, []byte(dstContent), params.FileMode)
 		if err != nil {

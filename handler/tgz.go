@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	core2 "github.com/dayeguilaiye/file-generator/core"
+	"github.com/dayeguilaiye/file-generator/utils"
 	"github.com/pkg/errors"
 
 	"io"
@@ -22,7 +23,7 @@ type TgzHandler struct {
 func NewTgzHandler() *TgzHandler {
 	return &TgzHandler{
 		defaultFileMode: 0666,
-		TmpDir:          "./",
+		TmpDir:          "tmp",
 	}
 }
 
@@ -45,17 +46,21 @@ func (t *TgzHandler) GetHandlerFunc() core2.HandlerFunc {
 		if params.FileMode == 0 {
 			params.FileMode = t.defaultFileMode
 		}
-		if err := recreateDir(t.TmpDir); err != nil {
-			return errors.WithMessagef(err, "failed to recreate dir %s", t.TmpDir)
+		tmpDir := filepath.Join(targetDir, t.TmpDir)
+		if err := recreateDir(tmpDir); err != nil {
+			return errors.WithMessagef(err, "failed to recreate dir %s", tmpDir)
 		}
 		for i, child := range params.Children {
-			err := generator.Generate(t.TmpDir, child)
+			err := generator.Generate(tmpDir, child)
 			if err != nil {
 				return errors.WithMessagef(err, "failed to generate child of %s, index: %d", params.Name, i)
 			}
 		}
-		if err := compressFilesInDirToTgz(t.TmpDir, filepath.Join(targetDir, params.Name), params.FileMode); err != nil {
-			return errors.WithMessagef(err, "failed to compress files in dir %s to tgz file", t.TmpDir)
+		if err := compressFilesInDirToTgz(tmpDir, filepath.Join(targetDir, params.Name), params.FileMode); err != nil {
+			return errors.WithMessagef(err, "failed to compress files in dir %s to tgz file", tmpDir)
+		}
+		if err := os.RemoveAll(tmpDir); err != nil {
+			return errors.WithMessagef(err, "failed to remove tmp dir %s", tmpDir)
 		}
 
 		return nil
@@ -71,11 +76,11 @@ func compressFilesInDirToTgz(srcDir, target string, fileMode os.FileMode) error 
 		return errors.New("srcDir is not a directory")
 	}
 	t, _ := os.OpenFile(target, os.O_RDWR|os.O_CREATE|os.O_TRUNC, fileMode)
-	defer t.Close()
+	defer utils.HandleClose(t)
 	gw := gzip.NewWriter(t)
-	defer gw.Close()
+	defer utils.HandleClose(gw)
 	tw := tar.NewWriter(gw)
-	defer tw.Close()
+	defer utils.HandleClose(tw)
 	return filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -98,7 +103,7 @@ func compressFilesInDirToTgz(srcDir, target string, fileMode os.FileMode) error 
 		if err != nil {
 			return err
 		}
-		defer f.Close()
+		defer utils.HandleClose(f)
 		if _, err := io.Copy(tw, f); err != nil {
 			return err
 		}

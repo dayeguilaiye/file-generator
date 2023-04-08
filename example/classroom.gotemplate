@@ -1,0 +1,3 @@
+{{ range .Students }}
+    My name is {{ .Name }}, my age is {{ .Age }}.
+{{ end }}

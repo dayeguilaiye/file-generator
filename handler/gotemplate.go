@@ -24,7 +24,7 @@ func (g *GoTemplateHandler) SetDefaultFileMode(mode fs.FileMode) {
 	g.defaultFileMode = mode
 }
 
-type GTParams struct {
+type GoTemplateParam struct {
 	Name         string
 	FileMode     fs.FileMode
 	Interface    interface{}
@@ -37,7 +37,7 @@ func (g *GoTemplateHandler) GetHandleType() string {
 
 func (g *GoTemplateHandler) GetHandlerFunc() core.HandlerFunc {
 	return func(_ *core.Generator, dir string, data interface{}) error {
-		params, ok := data.(GTParams)
+		params, ok := data.(GoTemplateParam)
 		if !ok {
 			return core.WrongDataTypeError
 		}
