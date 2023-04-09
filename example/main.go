@@ -8,70 +8,89 @@ import (
 )
 
 func main() {
-	g := generators.DefaultGenerator()
-	err := g.Generate("example/gitIgnore_result", testNode)
+	// set some data
+	var classRoom = ClassRoom{
+		Students: []Student{
+			{
+				Name: "Sam",
+				Age:  "10",
+			},
+			{
+				Name: "Amy",
+				Age:  "12",
+			},
+		},
+	}
+
+	err := GenerateMyStrangeFile(classRoom, "echo hello world")
 	if err != nil {
-		fmt.Printf("failed to generate file, err: %v", err)
+		fmt.Println(err)
 	} else {
 		fmt.Println("success")
 	}
 }
 
-// result: a.tar.gz/bDir/c.sh
-// c.sh is copied from example/template.sh, and replaced "[NEED_REPLACE]" into "c"
-var testNode = core.Node{
-	Type: "tgz",
-	Data: handler.TgzParams{
-		Name: "a.tar.gz",
-		Children: []core.Node{
-			{
-				Type: "dir",
-				Data: handler.DirParams{
-					Name: "bDir",
-					Children: []core.Node{
-						{
-							Type: "replace",
-							Data: handler.ReplaceParams{
-								Name:         "c.sh",
-								FileMode:     0777,
-								TemplatePath: "example/template.sh",
-								Replaces:     map[string]string{"[NEED_REPLACE]": "c"},
-							},
-						},
-						{
-							Type: "goTemplate",
-							Data: handler.GoTemplateParam{
-								Name:         "classroom.txt",
-								FileMode:     0777,
-								TemplatePath: "example/classroom.gotemplate",
-								Interface:    classRoom,
-							},
-						},
-					},
-				},
-			},
-		},
-	},
-}
+// some data structure
 
-var classRoom = ClassRoom{
-	Students: []Student{
-		{
-			Name: "Sam",
-			Age:  "10",
-		},
-		{
-			Name: "Amy",
-			Age:  "12",
-		},
-	},
+type Student struct {
+	Name string
+	Age  string
 }
 
 type ClassRoom struct {
 	Students []Student
 }
 
-type Student struct {
-	Name string
-	Age  string
+// GenerateMyStrangeFile is an example to generate a file with extremely deep layers,
+// and the data in file have to change with the input data (classroom).
+func GenerateMyStrangeFile(room ClassRoom, roomName string) error {
+	// set node structure
+	node := core.Node{
+		// a tgz type file with name "a.tar.gz"
+		Type: "tgz",
+		Data: handler.TgzParams{
+			Name: "a.tar.gz",
+			// the a.tar.gz contains a directory with name "bDir"
+			Children: []core.Node{
+				{
+					Type: "dir",
+					Data: handler.DirParams{
+						Name: "bDir",
+						// in bDir, there are two files, one is c.sh, the other is classroom.txt
+						Children: []core.Node{
+							{
+								// c.sh is a file with content "echo [NEED_REPLACE]",
+								// and the "[NEED_REPLACE]" will be replaced with the input data (roomName)
+								Type: "replace",
+								Data: handler.ReplaceParams{
+									Name:         "c.sh",
+									FileMode:     0777,
+									TemplatePath: "example/template.sh",
+									Replaces:     map[string]string{"[NEED_REPLACE]": roomName},
+								},
+							},
+							{
+								// classroom.txt is a file with content "
+								// {{ range .Students }}
+								//    My name is {{ .Name }}, my age is {{ .Age }}.
+								// {{ end }}
+								//", it is wrote by go template, and the data in file will be replaced with the input data (room)
+								Type: "goTemplate",
+								Data: handler.GoTemplateParam{
+									Name:         "classroom.txt",
+									FileMode:     0777,
+									TemplatePath: "example/classroom.gotemplate",
+									Interface:    room,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	// get the default generator
+	g := generators.DefaultGenerator()
+	// use the generator generate the node
+	return g.Generate("example/gitIgnore_result", node)
 }
